@@ -7,7 +7,7 @@ DEVICE_PARAMETERS = {
     "hash": "a"
 }
 
-hospital_hash = "xxxxxxxxx"
+hospital_hash = "xxxxxx"
 
 def set_hospital_hash(hash):
     global hospital_hash
@@ -45,7 +45,7 @@ def execute_user_input():
         unpair()
 
 if __name__ == "__main__":
-    set_hospital_hash("b")
+    set_hospital_hash("clinic1234")
     set_parameters()
     mqtt_driver.run()
     time.sleep(1)
