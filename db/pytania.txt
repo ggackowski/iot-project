@@ -1,0 +1,6 @@
+Czy measurement musi miec swoj id
+czy measurement zawsze bedzie mialo wartosc DECIMAL czy moze str
+czy device potrzebuje dwa pola taken? jedno kiedy doktor bierze drugie kiedy paruje z pacjentem
+
+co z device/doctor/patient id w devices/measurements przy usunieciu device/doctor/patient
+czy mozemy usuwac pacjenta/doktora ktory jest przypisany do opaski
