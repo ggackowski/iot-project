@@ -50,20 +50,23 @@ class PairError(Exception):
 
 
 def modifying_db_exception_block(func):
+    """decorator that commits changes done to db by the 'func' and wraps it in try/except block"""
+
     def inner(*args):
         try:
             func(*args)
             conn.commit()
-            print(f"{func.__name__} executed successfully")
+            print(f"{func.__name__}{args} executed successfully")
         except PairError as pe:
             print(pe)
         except (Exception, psycopg2.Error) as error:
-            print(f"ERROR WHILE EXECUTING {func.__name__}:")
+            print(f"ERROR WHILE EXECUTING {func.__name__}{args}:")
             print(error)
 
     return inner
 
 
+# ADD
 @modifying_db_exception_block
 def add_doctor(name, surname):
     cur.execute("INSERT INTO doctors (name, surname) VALUES(%s, %s)", (name, surname))
@@ -75,16 +78,17 @@ def add_patient(name, surname):
 
 
 @modifying_db_exception_block
-def add_device(name, loinc_num):
-    cur.execute("INSERT INTO devices (name, loinc_num) VALUES(%s, %s)", (name, loinc_num))
+def add_device(name, loinc_num, mac):
+    cur.execute("INSERT INTO devices (name, loinc_num, mac) VALUES(%s, %s, %s)", (name, loinc_num, mac))
 
 
 @modifying_db_exception_block
-def add_measurement(val, loinc_num, device_id, patient_id):
-    cur.execute("INSERT INTO measurements (val, loinc_num, device_id, patient_id) VALUES(%s, %s, %s, %s)",
-                (val, loinc_num, device_id, patient_id))
+def add_measurement(val, device_id, patient_id):
+    cur.execute("INSERT INTO measurements (val, device_id, patient_id) VALUES(%s, %s, %s)",
+                (val, device_id, patient_id))
 
 
+# DELETE
 @modifying_db_exception_block
 def delete_doctor(d_id):
     cur.execute("DELETE FROM doctors WHERE id=%s", (d_id,))
@@ -115,6 +119,7 @@ def delete_device_measurements(d_id):
     cur.execute("DELETE FROM measurements WHERE device_id=%s", (d_id,))
 
 
+# PAIR/UNPAIR
 @modifying_db_exception_block
 def pair_device_to_doctor(device_id, doctor_id):
     cur.execute("SELECT id FROM devices WHERE id = %s AND taken = FALSE", (device_id,))
@@ -157,28 +162,69 @@ def unpair_device_from_patient(d_id, p_id):
                 "WHERE id = %s AND patient_id = %s AND taken = TRUE", (d_id, p_id))
 
 
+# GET
+def get_from_db_exception_block(func):
+    """decorator that returns the results of the 'func' as a list of dicts (psycopg2.extras.DictRow)
+    or a dict/None if know that there will always be at most one result, and wraps it in the try/except block"""
+
+    def inner(*args):
+        try:
+            result = func(*args)
+            if not result:
+                print(f"NO RESULTS FROM {func.__name__}{args}")
+            print(f"{func.__name__} executed successfully")
+            return result
+        except (Exception, psycopg2.Error) as error:
+            print(f"ERROR WHILE EXECUTING {func.__name__}{args}:")
+            print(error)
+
+    return inner
+
+
+@get_from_db_exception_block
+def get_free_devices():
+    cur.execute("SELECT * FROM devices WHERE taken = FALSE")
+    return cur.fetchall()
+
+
+@get_from_db_exception_block
+def get_devices_paired_to_doctor(d_id):
+    cur.execute("SELECT * FROM devices WHERE doctor_id = %s", (d_id,))
+    return cur.fetchall()
+
+
+@get_from_db_exception_block
+def get_device_from_mac(mac):
+    cur.execute("SELECT * FROM devices WHERE mac = %s", (mac,))
+    return cur.fetchone()
+
+
+@get_from_db_exception_block
+def get_doctor_by_device_id(d_id):
+    cur.execute("SELECT doctors.* FROM doctors "
+                "INNER JOIN devices ON devices.doctor_id = doctors.id "
+                "WHERE devices.doctor_id = %s", (d_id,))
+    return cur.fetchone()
+
+
 if __name__ == '__main__':
     delete_db()
     init_db()
     add_doctor("d", "o")
     add_patient("p", "a")
-    add_device("name", "loinc")
+    add_device("name", "loinc", "mac")
+    add_device("name", "loinc", "mac")
+    print(get_free_devices())
 
     pair_device_to_doctor(1, 1)
-    cur.execute("SELECT * FROM devices")
-    print(cur.fetchall())
+    print(get_devices_paired_to_doctor(1))
+    print(get_doctor_by_device_id(1))
+
     pair_device_to_patient(1, 1)
-    cur.execute("SELECT * FROM devices")
-    print(cur.fetchall())
     unpair_device_from_patient(1, 1)
-    cur.execute("SELECT * FROM devices")
-    print(cur.fetchall())
     unpair_device_from_doctor(1, 1)
-    cur.execute("SELECT * FROM devices")
-    print(cur.fetchall())
 
-    add_measurement(1.5, "loinc", 1, 1)
-
+    add_measurement(1.5, 1, 1)
     add_doctor("hi", "t")
     delete_doctor(2)
 

@@ -13,8 +13,9 @@ CREATE TABLE patients(
 CREATE TABLE devices(
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(20) NOT NULL,
+    loinc_num VARCHAR NOT NULL,
+    mac VARCHAR(20) NOT NULL,
     taken BOOLEAN NOT NULL DEFAULT FALSE,
-    loinc_num VARCHAR(20) NOT NULL,
     doctor_id INT DEFAULT NULL,
     patient_id INT DEFAULT NULL,
     FOREIGN KEY(doctor_id) REFERENCES doctors(id) ON DELETE SET NULL,
@@ -24,7 +25,6 @@ CREATE TABLE devices(
 CREATE TABLE measurements(
 	id SERIAL PRIMARY KEY,
 	val DECIMAL NOT NULL,
-	loinc_num VARCHAR(20) NOT NULL,
 	device_id INT,
 	patient_id INT,
     FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE SET NULL,
