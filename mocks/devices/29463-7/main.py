@@ -3,11 +3,11 @@ import time
 import random
 
 DEVICE_PARAMETERS = {
-    "loinc_num": "11556-8",
-    "loinc_long_common_name": "Oxygen [Partial pressure] in Blood",
-    "hash": "adjfkeor",
-    "minimal_measurement": 20,
-    "maximal_measurement": 140
+    "loinc_num": "29463-7",
+    "loinc_long_common_name": "Body weight",
+    "hash": "nfjdhfkjd",
+    "minimal_measurement": 1,
+    "maximal_measurement": 240
 }
 
 hospital_hash = "xxxxxx"
