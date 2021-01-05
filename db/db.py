@@ -211,6 +211,18 @@ def get_device_from_mac(mac):
 
 
 @get_from_db_exception_block
+def get_doctor_id(name, surname):
+    cur.execute("SELECT * FROM doctors WHERE name = %s and surname= %s", (name, surname,))
+    return cur.fetchone()
+
+
+@get_from_db_exception_block
+def get_patient_id(name, surname):
+    cur.execute("SELECT * FROM patients WHERE name = %s and surname= %s", (name, surname,))
+    return cur.fetchone()
+
+
+@get_from_db_exception_block
 def get_doctor_by_device_id(d_id):
     cur.execute("SELECT doctors.* FROM doctors "
                 "INNER JOIN devices ON devices.doctor_id = doctors.id "
@@ -241,3 +253,4 @@ if __name__ == '__main__':
     delete_doctor(2)
 
     disconnect()
+
