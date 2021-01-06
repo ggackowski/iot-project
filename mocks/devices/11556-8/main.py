@@ -24,7 +24,6 @@ def generate_measurement():
 
 def add_to_database():
     mqtt_driver.send_device_data_to_manager(DEVICE_PARAMETERS['loinc_num'], DEVICE_PARAMETERS['loinc_long_common_name'])
-    mqtt_driver.set_device_id(DEVICE_PARAMETERS['hash'])
 
 def pair():
     mqtt_driver.set_mqtt_subscriptions_to_state__pair()

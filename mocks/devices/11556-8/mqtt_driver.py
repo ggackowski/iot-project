@@ -23,7 +23,6 @@ subscribed_topic_names = []
 hospital_hash = "xxxxxxx"
 device_type = "x"
 device_hash = "xxxx"
-device_id = "xxxxx"
 doctor_id = "xx"
 patient_id = "xx"
 
@@ -44,25 +43,6 @@ def set_device_hash(hash):
     global device_hash
     device_hash = hash
 
-def set_topic_names_after_receiving_device_id():
-    topics["get_doctor_id"] = hospital_hash + "/" + device_type + "/" + device_id
-    topics["send_pair_confirm"] = hospital_hash + "/" + device_type + "/" + device_id
-    topics["get_patient_id"] = hospital_hash + "/" + device_type + "/" + device_id + "/patient"
-    topics["send_setting_patient_confirm"] = hospital_hash + "/" + device_type + "/" + device_id + "/patient"
-    topics["send_measurement"] = hospital_hash + "/" + device_type + "/" + device_id + "/measure"
-    topics["send_unpair_request"] = hospital_hash + "/" + device_type + "/" + device_id + "/unpair"
-    topics["get_unpair_request"] = hospital_hash + "/" + device_type + "/" + device_id + "/unpair"
-    topics["send_unpair_confirm"] = hospital_hash + "/" + device_type + "/" + device_id + "/unpair"
-    topics["get_unpair_confirm"] = hospital_hash + "/" + device_type + "/" + device_id + "/unpair"
-
-
-def set_device_id(Id):
-    global device_id
-    device_id = ""
-    for letter in device_hash:
-        device_id += chr(ord(letter) + 1)
-    set_topic_names_after_receiving_device_id()
-
 
 def run():
     set_initial_topic_names()
@@ -73,6 +53,15 @@ def set_initial_topic_names():
     topics["send_device_data"] = hospital_hash + "/add"
     topics["get_id"] = hospital_hash + "/" + device_hash
     topics["send_pair_request"] = hospital_hash + "/" + device_type + "/pair"
+    topics["get_doctor_id"] = hospital_hash + "/" + device_type + "/" + device_hash
+    topics["send_pair_confirm"] = hospital_hash + "/" + device_type + "/" + device_hash
+    topics["get_patient_id"] = hospital_hash + "/" + device_type + "/" + device_hash + "/patient"
+    topics["send_setting_patient_confirm"] = hospital_hash + "/" + device_type + "/" + device_hash + "/patient"
+    topics["send_measurement"] = hospital_hash + "/" + device_type + "/" + device_hash + "/measure"
+    topics["send_unpair_request"] = hospital_hash + "/" + device_type + "/" + device_hash + "/unpair"
+    topics["get_unpair_request"] = hospital_hash + "/" + device_type + "/" + device_hash + "/unpair"
+    topics["send_unpair_confirm"] = hospital_hash + "/" + device_type + "/" + device_hash + "/unpair"
+    topics["get_unpair_confirm"] = hospital_hash + "/" + device_type + "/" + device_hash + "/unpair"
 
 
 def send_device_data_to_manager(loinc, name):
@@ -82,9 +71,9 @@ def send_device_data_to_manager(loinc, name):
 
 
 def send_pair_request():
-    global device_id
-    print("sending " + topics["send_pair_request"] + " " + device_id)
-    client.publish(topics["send_pair_request"], device_id, 0, False)
+    global device_hash
+    print("sending " + topics["send_pair_request"] + " " + device_hash)
+    client.publish(topics["send_pair_request"], device_hash, 0, False)
 
 
 def send_pair_confirm():
@@ -137,8 +126,6 @@ def set_mqtt_subscriptions_to_state__set_patient():
 def set_mqtt_subscriptions_to_state__unpair():
     global client
     unsubscribe_all_topics()
-    client.subscribe(topics["get_unpair_request"])
-    subscribed_topic_names.append("get_unpair_request")
 
 
 def on_message(client, userdata, msg):
@@ -156,6 +143,7 @@ def on_get_doctor_id_message(msg):
     doctor_id = payload
     unsubscribe_all_topics()
     send_pair_confirm()
+    client.subscribe(topics["get_unpair_request"])
     set_mqtt_subscriptions_to_state__set_patient()
 
 
@@ -169,9 +157,8 @@ def on_get_patient_id_message(msg):
 
 
 def on_get_unpair_request(msg):
-    if get_payload_content(msg) == "OK":
-        return
-    send_unpair_confirm()
+    if get_payload_content(msg) == "unpairman":
+        send_unpair_confirm()
 
 
 def get_payload_content(msg):
