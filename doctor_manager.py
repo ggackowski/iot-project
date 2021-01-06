@@ -37,7 +37,7 @@ def on_message(client, userdata, msg):
             if len(comm_tab) == 4:
                 fourth_part = comm_tab[3]
                 if fourth_part == "patient" and str(msg.payload)[2:-1] == "OK":
-                    print("Patient " + patient_id + " connected to device " + sec_part)
+                    print("Patient " + str(patient_id) + " connected to device " + sec_part)
                     db_manager.pair_device_to_patient(third_part, patient_id)
                     mqttc.unsubscribe(msg.topic)
                 if fourth_part == "measure":
@@ -50,7 +50,7 @@ def on_message(client, userdata, msg):
                     db_manager.unpair_device_from_doctor(third_part, doctor_id)
                     mqttc.unsubscribe(msg.topic)
                     mqttc.unsubscribe(hospital_hash + "/" + sec_part + "/" + third_part + "/measure")
-                    if str(msg.payload)[2:-1] == "unpair":
+                    if str(msg.payload)[2:-1] == "unpairdev":
                         mqttc.publish(msg.topic, "OK", 0, False)
             elif len(comm_tab) == 3 and str(msg.payload)[2:-1] == "OK":
                 print("Connected to device " + sec_part + " id: " + third_part)
@@ -97,6 +97,9 @@ def set_patient_id():
 def connect_new_device():
     results = db_manager.get_free_devices()
     available_devices = []
+    if not results:
+        print("No devices available")
+        return
     for result in results:
         if result[1] not in available_devices:
             available_devices.append(result[1])
@@ -108,11 +111,11 @@ def connect_new_device():
     print("Please select number for device")
     number = int(input(">> "))
     if 0 <= number < i:
-        device_type = available_devices[number]
+        device_loinc = results[number][2]
     else:
         print("Invalid device number")
         return
-    mqttc.subscribe(hospital_hash + "/" + device_type + "/pair")
+    mqttc.subscribe(hospital_hash + "/" + device_loinc + "/pair")
 
 
 def pair_with_patient():
@@ -134,14 +137,14 @@ def pair_with_patient():
     print("Please select number for device")
     number = int(input(">> "))
     if 0 <= number < len(connected_devices):
-        device_type = results[number][1]
-        device_id = results[number][0]
+        device_loinc = results[number][2]
+        device_mac = results[number][3]
     else:
         print("Invalid device number")
         return
-    mqttc.publish(hospital_hash + "/" + device_type + "/" + str(device_id) + "/patient", patient_id, 0, False)
-    mqttc.subscribe(hospital_hash + "/" + device_type + "/" + str(device_id) + "/patient")
-    mqttc.subscribe(hospital_hash + "/" + device_type + "/" + str(device_id) + "/measure")
+    mqttc.publish(hospital_hash + "/" + device_loinc + "/" + device_mac + "/patient", patient_id, 0, False)
+    mqttc.subscribe(hospital_hash + "/" + device_loinc + "/" + device_mac + "/patient")
+    mqttc.subscribe(hospital_hash + "/" + device_loinc + "/" + device_mac + "/measure")
 
 
 def disconnect_device():
@@ -160,19 +163,19 @@ def disconnect_device():
     print("Please select number for device")
     number = int(input(">> "))
     if 0 <= number < len(connected_devices):
-        device_type = results[number][1]
-        device_id = results[number][0]
+        device_loinc = results[number][2]
+        device_mac = results[number][3]
     else:
         print("Invalid device number")
         return
-    mqttc.publish(hospital_hash + "/" + device_type + "/" + str(device_id) + "/unpair", "unpair", 0, False)
+    mqttc.publish(hospital_hash + "/" + device_loinc + "/" + device_mac + "/unpair", "unpair", 0, False)
 
 
 def disconnect_from_all_devices():
     results = db_manager.get_devices_paired_to_doctor(doctor_id)
     if results:
         for result in results:
-            mqttc.publish(hospital_hash + "/" + result[1] + "/" + str(result[0]) + "/unpair", "unpair", 0, False)
+            mqttc.publish(hospital_hash + "/" + result[1] + "/" + result[3] + "/unpair", "unpair", 0, False)
 
 
 def navigate():

@@ -11,10 +11,14 @@ def on_connect(client, user_data, flags, rc):
 
 
 def on_message(client, userdata, msg):
-    device_hash = str(msg.payload)[2:-1]
+    device_data = str(msg.payload)[2:-1]
+    data_tab = device_data.split('#')
+    device_hash = data_tab[0]
+    loinc = data_tab[1]
+    name = data_tab[2]
     device = db_manager.get_device_from_mac(device_hash)
     if device is None:
-        db_manager.add_device("9", "9", device_hash)
+        db_manager.add_device(name, loinc, device_hash)
         device_id = db_manager.get_device_from_mac(device_hash)[0]
         print("Added new device with id " + str(device_id))
     else:

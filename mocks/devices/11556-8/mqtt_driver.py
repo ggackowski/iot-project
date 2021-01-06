@@ -121,6 +121,9 @@ def set_mqtt_subscriptions_to_state__set_patient():
     global client
     unsubscribe_all_topics()
     client.subscribe(topics["get_patient_id"])
+    subscribed_topic_names.append("get_patient_id")
+    client.subscribe(topics["get_unpair_request"])
+    subscribed_topic_names.append("get_unpair_request")
 
 
 def set_mqtt_subscriptions_to_state__unpair():

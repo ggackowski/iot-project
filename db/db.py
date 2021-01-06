@@ -109,10 +109,10 @@ def delete_patient(p_id):
 
 @modifying_db_exception_block
 def delete_device(d_id):
-    cur.execute("SELECT * FROM devices WHERE id = %s AND (taken = TRUE OR patient_id IS NOT NULL)", (d_id,))
+    cur.execute("SELECT * FROM devices WHERE mac = %s AND (taken = TRUE OR patient_id IS NOT NULL)", (d_id,))
     if cur.fetchall():
         raise ModifyingError("CANNOT DELETE TAKEN DEVICE")
-    cur.execute("DELETE FROM devices WHERE id=%s", (d_id,))
+    cur.execute("DELETE FROM devices WHERE mac=%s", (d_id,))
 
 
 @modifying_db_exception_block
@@ -133,44 +133,44 @@ def delete_device_measurements(d_id):
 # PAIR/UNPAIR
 @modifying_db_exception_block
 def pair_device_to_doctor(device_id, doctor_id):
-    cur.execute("SELECT id FROM devices WHERE id = %s AND taken = FALSE", (device_id,))
+    cur.execute("SELECT id FROM devices WHERE mac = %s AND taken = FALSE", (device_id,))
     if cur.fetchone() is None:
         raise ModifyingError("CAN'T PAIR DEVICE TO DOCTOR, DEVICE TAKEN OR DEVICE ID DOESN'T EXISTS IN DB")
     cur.execute("UPDATE devices "
                 "SET taken = TRUE, doctor_id = %s "
-                "WHERE id = %s AND taken = FALSE", (doctor_id, device_id))
+                "WHERE mac = %s AND taken = FALSE", (doctor_id, device_id))
 
 
 @modifying_db_exception_block
 def pair_device_to_patient(d_id, p_id):
-    cur.execute("SELECT id FROM devices WHERE id = %s AND taken = TRUE", (d_id,))
+    cur.execute("SELECT id FROM devices WHERE mac = %s AND taken = TRUE", (d_id,))
     if cur.fetchone() is None:
         raise ModifyingError("CAN'T PAIR DEVICE TO PATIENT, DEVICE NOT TAKEN OR DEVICE ID DOESN'T EXISTS IN DB")
     cur.execute("UPDATE devices "
                 "SET patient_id = %s "
-                "WHERE id = %s AND taken = TRUE", (p_id, d_id))
+                "WHERE mac = %s AND taken = TRUE", (p_id, d_id))
 
 
 @modifying_db_exception_block
 def unpair_device_from_doctor(device_id, doctor_id):
-    cur.execute("SELECT id FROM devices WHERE id = %s AND doctor_id = %s AND taken = TRUE", (device_id, doctor_id))
+    cur.execute("SELECT id FROM devices WHERE mac = %s AND doctor_id = %s AND taken = TRUE", (device_id, doctor_id))
     if cur.fetchone() is None:
         raise ModifyingError(
             "CAN'T UNPAIR DEVICE FROM DOCTOR, DEVICE NOT PAIRED WITH THE DOCTOR OR DEVICE ID DOESN'T EXISTS IN DB")
     cur.execute("UPDATE devices "
                 "SET doctor_id = NULL, taken = FALSE "
-                "WHERE id = %s AND doctor_id = %s AND taken = TRUE", (device_id, doctor_id))
+                "WHERE mac = %s AND doctor_id = %s AND taken = TRUE", (device_id, doctor_id))
 
 
 @modifying_db_exception_block
 def unpair_device_from_patient(d_id, p_id):
-    cur.execute("SELECT id FROM devices WHERE id = %s AND patient_id = %s AND taken = TRUE", (d_id, p_id))
+    cur.execute("SELECT id FROM devices WHERE mac = %s AND patient_id = %s AND taken = TRUE", (d_id, p_id))
     if cur.fetchone() is None:
         raise ModifyingError(
             "CAN'T UNPAIR DEVICE FROM PATIENT, DEVICE NOT PAIRED WITH PATIENT OR DEVICE ID DOESN'T EXISTS IN DB")
     cur.execute("UPDATE devices "
                 "SET patient_id = NULL "
-                "WHERE id = %s AND patient_id = %s AND taken = TRUE", (d_id, p_id))
+                "WHERE mac = %s AND patient_id = %s AND taken = TRUE", (d_id, p_id))
 
 
 # GET
@@ -233,24 +233,5 @@ def get_doctor_by_device_id(d_id):
 if __name__ == '__main__':
     delete_db()
     init_db()
-    add_doctor("d", "o")
-    add_patient("p", "a")
-    add_device("name", "loinc", "mac")
-    add_device("name", "loinc", "mac")
-    print(get_free_devices())
-
-    pair_device_to_doctor(1, 1)
-    delete_device(1)
-    print(get_devices_paired_to_doctor(1))
-    print(get_doctor_by_device_id(1))
-
-    pair_device_to_patient(1, 1)
-    unpair_device_from_patient(1, 1)
-    unpair_device_from_doctor(1, 1)
-
-    add_measurement(1.5, 1, 1)
-    add_doctor("hi", "t")
-    delete_doctor(2)
-
     disconnect()
 
