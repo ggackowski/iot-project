@@ -1,0 +1,24 @@
+<init>
+
+(device) clinic1234/add adjfkeor#11556-8#Oxygen [Partial pressure] in Blood
+
+<pair / doctor>
+
+(device) pair |  clinic1234/11556-8/pair adjfkeor
+(broker) clinic1234/11556-8/adjfkeor 234234
+(device) clinic1234/11556-8/adjfkeor OK
+
+<patient>
+
+(broker) clinic1234/11556-8/adjfkeor/patient 76767
+(device) clinic1234/11556-8/adjfkeor/patient OK
+
+<measure>
+
+(device) measure |  clinic1234/11556-8/adjfkeor/measure 111
+(device) measure |  clinic1234/11556-8/adjfkeor/measure 103
+
+<unpair>
+
+(broker) clinic1234/11556-8/adjfkeor/unpair unpairman
+(device) clinic1234/11556-8/adjfkeor/unpair OK
