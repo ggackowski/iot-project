@@ -1,6 +1,5 @@
 ![db diagram](db_diagram.png)\
-Install postgres https://www.postgresql.org/download/
+Create "iot_db_host" and "iot_db_pass" environment variables
+https://www.youtube.com/watch?v=IolxqkL7cD8
 \
-Run pgAdmin 4 on your computer\
-Change DB_NAME, DB_USER, DB_PASS in db.py to match your db name, username, password\
 Should work

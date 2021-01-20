@@ -1,10 +1,13 @@
 import psycopg2
 import psycopg2.extras
+import os
 
-DB_HOST = "localhost"
-DB_NAME = "iot_db"
+# using environment variables to get db host and password
+DB_HOST = os.environ.get("iot_db_host")
+DB_PASS = os.environ.get("iot_db_pass")
+DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASS = "1234"
+
 
 conn = psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
