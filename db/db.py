@@ -8,7 +8,6 @@ DB_PASS = os.environ.get("iot_db_pass")
 DB_NAME = "postgres"
 DB_USER = "postgres"
 
-
 conn = psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
@@ -86,9 +85,16 @@ def add_device(name, loinc_num, mac):
 
 
 @modifying_db_exception_block
-def add_measurement(val, device_id, patient_id):
-    cur.execute("INSERT INTO measurements (val, device_id, patient_id) VALUES(%s, %s, %s)",
-                (val, device_id, patient_id))
+def add_measurement(val, device_id, patient_id, date):
+    cur.execute("INSERT INTO measurements (val, device_id, patient_id, date) VALUES(%s, %s, %s, %s)",
+                (val, device_id, patient_id, date))
+
+
+@modifying_db_exception_block
+def add_loinc_data(loinc, component, property, time, system, scale_type, method_type, unit):
+    cur.execute("INSERT INTO loinc_data (time, system, scale_typ, property, method_typ, loinc_num, component, unit)" +
+                " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (time, system, scale_type, property, method_type, loinc, component, unit))
 
 
 # DELETE
@@ -202,6 +208,12 @@ def get_free_devices():
 
 
 @get_from_db_exception_block
+def get_all_devices():
+    cur.execute("SELECT * FROM devices")
+    return cur.fetchall()
+
+
+@get_from_db_exception_block
 def get_devices_paired_to_doctor(d_id):
     cur.execute("SELECT * FROM devices WHERE doctor_id = %s", (d_id,))
     return cur.fetchall()
@@ -233,8 +245,24 @@ def get_doctor_by_device_id(d_id):
     return cur.fetchone()
 
 
+@get_from_db_exception_block
+def get_patient_measurements(p_id):
+    cur.execute("SELECT patients.name, patients.surname, measurements.val, devices.name, devices.loinc_num,"
+                " measurements.date FROM patients "
+                "INNER JOIN measurements ON measurements.patient_id = patients.id "
+                "INNER JOIN devices ON measurements.device_id = devices.mac "
+                "WHERE patients.id = %s", (p_id,))
+    return cur.fetchall()
+
+
+@get_from_db_exception_block
+def get_loinc_data(loinc_num):
+    cur.execute("SELECT loinc_data.* FROM loinc_data "
+                "WHERE loinc_data.loinc_num = %s", (loinc_num, ))
+    return cur.fetchone()
+
+
 if __name__ == '__main__':
     delete_db()
     init_db()
     disconnect()
-

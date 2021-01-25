@@ -1,16 +1,21 @@
 import threading
+import random
+import string
 
 import paho.mqtt.client as mqtt
 import db.db as db_manager
+from datetime import datetime
 
 hospital_hash = "clinic1234"
 doctor_id = ""
 patient_id = ""
-mqttc = mqtt.Client(hospital_hash + "doctor_manager")
+mqttc = mqtt.Client(
+    hospital_hash + "doctor_manager" + random.choice(string.ascii_letters) + random.choice(string.ascii_letters))
 
 
 def on_connect(client, user_data, flags, rc):
-    print("Connected with result code " + str(rc))
+    # print("Connected with result code " + str(rc))
+    pass
 
 
 def on_message(client, userdata, msg):
@@ -43,10 +48,12 @@ def on_message(client, userdata, msg):
                 if fourth_part == "measure":
                     measurement = str(msg.payload)[2:-1]
                     print("Measurement from " + sec_part + " : " + measurement)
-                    db_manager.add_measurement(measurement, third_part, patient_id)
+                    db_manager.add_measurement(measurement, third_part, patient_id, datetime.now())
                 if fourth_part == "unpair" and (
                         str(msg.payload)[2:-1] == "OK" or str(msg.payload)[2:-1] == "unpairdev"):
                     print("Disconnected from device " + sec_part + " id: " + third_part)
+                    if patient_id != "":
+                        db_manager.unpair_device_from_patient(third_part, patient_id)
                     db_manager.unpair_device_from_doctor(third_part, doctor_id)
                     mqttc.unsubscribe(msg.topic)
                     mqttc.unsubscribe(hospital_hash + "/" + sec_part + "/" + third_part + "/measure")
@@ -178,10 +185,53 @@ def disconnect_from_all_devices():
             mqttc.publish(hospital_hash + "/" + result[1] + "/" + result[3] + "/unpair", "unpair", 0, False)
 
 
+def get_patient_data():
+    if patient_id == '':
+        print("Set patient id first!")
+        return
+    results = db_manager.get_patient_measurements(patient_id)
+    if not results:
+        print("No data for patient")
+        return
+    for result in results:
+        data = db_manager.get_loinc_data(result[4])
+        print("Data for " + result[0] + " " + result[1] + ": " + str(result[2]) + " " + data[8] + " from " + result[3])
+        print("Date and time of measurement: " + result[5].strftime("%d/%m/%Y %H:%M:%S"))
+
+
+def get_device_description():
+    results = db_manager.get_all_devices()
+    devices = []
+    i = 0
+    if not results:
+        print("No devices in database")
+        return
+    for result in results:
+        devices.append(str(i) + " - " + str(result[0]) + " " + result[1] + " " + result[2])
+        i += 1
+    print("Available devices:")
+    for device in devices:
+        print(device)
+    print("Please select number for device")
+    number = int(input(">> "))
+    if 0 <= number < len(devices):
+        device_loinc = results[number][2]
+    else:
+        print("Invalid device number")
+        return
+    data = db_manager.get_loinc_data(device_loinc)
+    if not data:
+        print("No data for selected device")
+        return
+    print("Device parameters for LOINC " + data[6]+": \n Component: " + data[7] + "\n Kind of property: " + data[4] +
+          "\n Time aspect: " + data[1] + "\n System: "+ data[2]+ "\n Type of scale: " + data[3] + "\n Type of method: " +
+          data[5] + "\n Unit: "+ data[8])
+
+
 def navigate():
     print("What do you want to do? (Enter the number for the selected action) \n 1 - set patient id "
           "\n 2 - connect new device \n 3 - pair device with patient \n 4 - disconnect device \n"
-          " 5 - disconnect from all devices")
+          " 5 - disconnect from all devices \n 6 - get current patient data \n 7 - get device description")
     choice = input(">>")
     if choice == "1":
         set_patient_id()
@@ -193,6 +243,10 @@ def navigate():
         disconnect_device()
     elif choice == "5":
         disconnect_from_all_devices()
+    elif choice == "6":
+        get_patient_data()
+    elif choice == "7":
+        get_device_description()
     elif choice == '':
         return
     else:
