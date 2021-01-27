@@ -7,7 +7,8 @@ DEVICE_PARAMETERS = {
     "loinc_long_common_name": "Oxygen [Partial pressure] in Blood",
     "hash": "adjfkeor",
     "minimal_measurement": 20,
-    "maximal_measurement": 140
+    "maximal_measurement": 140,
+    "unit": 0
 }
 
 hospital_hash = "xxxxxx"
@@ -35,7 +36,7 @@ def pair():
 
 
 def measure():
-    mqtt_driver.send_measurement(generate_measurement())
+    mqtt_driver.send_measurement(generate_measurement(), DEVICE_PARAMETERS['unit'])
 
 
 def unpair():

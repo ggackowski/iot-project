@@ -7,7 +7,8 @@ DEVICE_PARAMETERS = {
     "loinc_long_common_name": "Body weight",
     "hash": "nfjdhfkjd",
     "minimal_measurement": 1,
-    "maximal_measurement": 240
+    "maximal_measurement": 240,
+    "unit": 0
 }
 
 hospital_hash = "xxxxxx"
@@ -30,7 +31,7 @@ def pair():
     mqtt_driver.send_pair_request()
 
 def measure():
-    mqtt_driver.send_measurement(generate_measurement())
+    mqtt_driver.send_measurement(generate_measurement(), DEVICE_PARAMETERS['unit'])
 
 def unpair():
     mqtt_driver.set_mqtt_subscriptions_to_state__unpair()
@@ -41,6 +42,15 @@ def set_parameters():
     mqtt_driver.set_device_type(DEVICE_PARAMETERS["loinc_num"])
     mqtt_driver.set_hospital_hash(hospital_hash)
 
+def change_unit():
+    if DEVICE_PARAMETERS['unit'] == 0:
+        DEVICE_PARAMETERS['unit'] = 1
+        print("Unit changed to \'lb\'")
+    else:
+        DEVICE_PARAMETERS['unit'] = 0
+        print("Unit changed to \'kg\'")
+
+
 def execute_user_input():
     text = input(">> ")
     if text == "pair":
@@ -49,6 +59,8 @@ def execute_user_input():
         measure()
     if text == "unpair":
         unpair()
+    if text == "change unit":
+        change_unit()
 
 if __name__ == "__main__":
     set_hospital_hash("clinic1234")

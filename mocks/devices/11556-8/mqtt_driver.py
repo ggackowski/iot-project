@@ -88,9 +88,9 @@ def send_setting_patient_confirm():
     client.publish(topics["send_setting_patient_confirm"], "OK", 0, False)
 
 
-def send_measurement(measurement):
-    print("sending " + topics["send_measurement"] + " " + measurement)
-    client.publish(topics["send_measurement"], measurement, 0, False)
+def send_measurement(measurement, unit):
+    print("sending " + topics["send_measurement"] + " " + str(measurement) + "#" + str(unit))
+    client.publish(topics["send_measurement"], str(measurement) + "#" + str(unit), 0, False)
 
 
 def send_unpair_request():
@@ -121,9 +121,6 @@ def set_mqtt_subscriptions_to_state__set_patient():
     global client
     unsubscribe_all_topics()
     client.subscribe(topics["get_patient_id"])
-    subscribed_topic_names.append("get_patient_id")
-    client.subscribe(topics["get_unpair_request"])
-    subscribed_topic_names.append("get_unpair_request")
 
 
 def set_mqtt_subscriptions_to_state__unpair():

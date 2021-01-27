@@ -7,7 +7,8 @@ DEVICE_PARAMETERS = {
     "loinc_long_common_name": "Glucose [Mass/volume] in Blood",
     "hash": "dnbjgktr",
     "minimal_measurement": 80,
-    "maximal_measurement": 150
+    "maximal_measurement": 150,
+    "unit": 0
 }
 
 hospital_hash = "xxxxxx"
@@ -30,7 +31,7 @@ def pair():
     mqtt_driver.send_pair_request()
 
 def measure():
-    mqtt_driver.send_measurement(generate_measurement())
+    mqtt_driver.send_measurement(generate_measurement(), DEVICE_PARAMETERS['unit'])
 
 def unpair():
     mqtt_driver.set_mqtt_subscriptions_to_state__unpair()
