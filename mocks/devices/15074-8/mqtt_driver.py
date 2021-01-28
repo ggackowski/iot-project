@@ -176,6 +176,6 @@ def unsubscribe_all_topics():
 
 def run_mqtt_in_background():
     global client
-    client.connect("127.0.0.1", 1883, 60)
+    client.connect("broker.hivemq.com", 1883, 60)
     client.on_message = on_message
     client.loop_forever()
