@@ -85,9 +85,9 @@ def add_device(name, loinc_num, mac):
 
 
 @modifying_db_exception_block
-def add_measurement(val, device_id, patient_id, date):
-    cur.execute("INSERT INTO measurements (val, device_id, patient_id, date) VALUES(%s, %s, %s, %s)",
-                (val, device_id, patient_id, date))
+def add_measurement(val, device_id, patient_id, date, unit_num):
+    cur.execute("INSERT INTO measurements (val, device_id, patient_id, date, unit_id) VALUES(%s, %s, %s, %s, %s)",
+                (val, device_id, patient_id, date, unit_num))
 
 
 @modifying_db_exception_block
@@ -248,7 +248,7 @@ def get_doctor_by_device_id(d_id):
 @get_from_db_exception_block
 def get_patient_measurements(p_id):
     cur.execute("SELECT patients.name, patients.surname, measurements.val, devices.name, devices.loinc_num,"
-                " measurements.date FROM patients "
+                " measurements.date, measurements.unit_id FROM patients "
                 "INNER JOIN measurements ON measurements.patient_id = patients.id "
                 "INNER JOIN devices ON measurements.device_id = devices.mac "
                 "WHERE patients.id = %s", (p_id,))

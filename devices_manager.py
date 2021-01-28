@@ -40,7 +40,7 @@ def get_data_from_csv(loinc):
 def run_mqtt():
     mqttc.on_message = on_message
     mqttc.on_connect = on_connect
-    mqttc.connect("127.0.0.1", 1883, 60)
+    mqttc.connect("broker.hivemq.com", 1883, 60)
     mqttc.loop_forever()
 
 

@@ -14,8 +14,7 @@ mqttc = mqtt.Client(
 
 
 def on_connect(client, user_data, flags, rc):
-    # print("Connected with result code " + str(rc))
-    pass
+    print("Connected with result code " + str(rc))
 
 
 def on_message(client, userdata, msg):
@@ -47,8 +46,11 @@ def on_message(client, userdata, msg):
                     mqttc.unsubscribe(msg.topic)
                 if fourth_part == "measure":
                     measurement = str(msg.payload)[2:-1]
-                    print("Measurement from " + sec_part + " : " + measurement)
-                    db_manager.add_measurement(measurement, third_part, patient_id, datetime.now())
+                    measurement_table = measurement.split("#")
+                    measurement_data = measurement_table[0]
+                    unit_number = measurement_table[1]
+                    print("Measurement from " + sec_part + " : " + measurement_data)
+                    db_manager.add_measurement(measurement_data, third_part, patient_id, datetime.now(), unit_number)
                 if fourth_part == "unpair" and (
                         str(msg.payload)[2:-1] == "OK" or str(msg.payload)[2:-1] == "unpairdev"):
                     print("Disconnected from device " + sec_part + " id: " + third_part)
@@ -67,7 +69,7 @@ def on_message(client, userdata, msg):
 def configure():
     mqttc.on_message = on_message
     mqttc.on_connect = on_connect
-    mqttc.connect("127.0.0.1", 1883, 60)
+    mqttc.connect("broker.hivemq.com", 1883, 60)
     mqttc.loop_forever()
 
 
@@ -195,7 +197,8 @@ def get_patient_data():
         return
     for result in results:
         data = db_manager.get_loinc_data(result[4])
-        print("Data for " + result[0] + " " + result[1] + ": " + str(result[2]) + " " + data[8] + " from " + result[3])
+        unit = data[8].split(";")[result[6]]
+        print("Data for " + result[0] + " " + result[1] + ": " + str(result[2]) + " " + unit + " from " + result[3])
         print("Date and time of measurement: " + result[5].strftime("%d/%m/%Y %H:%M:%S"))
 
 
@@ -223,9 +226,10 @@ def get_device_description():
     if not data:
         print("No data for selected device")
         return
-    print("Device parameters for LOINC " + data[6]+": \n Component: " + data[7] + "\n Kind of property: " + data[4] +
-          "\n Time aspect: " + data[1] + "\n System: "+ data[2]+ "\n Type of scale: " + data[3] + "\n Type of method: " +
-          data[5] + "\n Unit: "+ data[8])
+    print("Device parameters for LOINC " + data[6] + ": \n Component: " + data[7] + "\n Kind of property: " + data[4] +
+          "\n Time aspect: " + data[1] + "\n System: " + data[2] + "\n Type of scale: " + data[
+              3] + "\n Type of method: " +
+          data[5] + "\n Unit: " + data[8])
 
 
 def navigate():

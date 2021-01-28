@@ -28,6 +28,7 @@ CREATE TABLE measurements(
 	device_id VARCHAR(20),
 	patient_id INT,
 	date TIMESTAMP,
+	unit_id INT,
     FOREIGN KEY(device_id) REFERENCES devices(mac) ON DELETE SET NULL,
     FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE SET NULL
 );

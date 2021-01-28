@@ -88,9 +88,9 @@ def send_setting_patient_confirm():
     client.publish(topics["send_setting_patient_confirm"], "OK", 0, False)
 
 
-def send_measurement(measurement, unit):
-    print("sending " + topics["send_measurement"] + " " + str(measurement) + "#" + str(unit))
-    client.publish(topics["send_measurement"], str(measurement) + "#" + str(unit), 0, False)
+def send_measurement(measurement):
+    print("sending " + topics["send_measurement"] + " " + measurement)
+    client.publish(topics["send_measurement"], measurement, 0, False)
 
 
 def send_unpair_request():
