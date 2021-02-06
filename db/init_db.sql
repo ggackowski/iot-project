@@ -13,23 +13,20 @@ CREATE TABLE patients(
 CREATE TABLE devices(
 	id SERIAL PRIMARY KEY,
 	name VARCHAR(40) NOT NULL,
-    loinc_num VARCHAR NOT NULL,
-    mac VARCHAR(20) UNIQUE NOT NULL,
-    taken BOOLEAN NOT NULL DEFAULT FALSE,
-    doctor_id INT DEFAULT NULL,
-    patient_id INT DEFAULT NULL,
-    FOREIGN KEY(doctor_id) REFERENCES doctors(id) ON DELETE SET NULL,
-    FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE SET NULL
+    loinc_number VARCHAR NOT NULL,
+    uuid VARCHAR(40) UNIQUE NOT NULL,
+    unit VARCHAR(10),
+    minimum_indication INT,
+    maximum_indication INT
 );
 
 CREATE TABLE measurements(
 	id SERIAL PRIMARY KEY,
 	val DECIMAL NOT NULL,
-	device_id VARCHAR(20),
+	device_id VARCHAR(40),
 	patient_id INT,
 	date TIMESTAMP,
-	unit_id INT,
-    FOREIGN KEY(device_id) REFERENCES devices(mac) ON DELETE SET NULL,
+    FOREIGN KEY(device_id) REFERENCES devices(uuid) ON DELETE SET NULL,
     FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE SET NULL
 );
 
