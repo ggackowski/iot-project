@@ -1,76 +1,18 @@
 import threading
 import random
 import string
-
-import paho.mqtt.client as mqtt
+from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
+import json
 import db.db as db_manager
 from datetime import datetime
 
-hospital_hash = "clinic1234"
 doctor_id = ""
 patient_id = ""
-mqttc = mqtt.Client(
-    hospital_hash + "doctor_manager" + random.choice(string.ascii_letters) + random.choice(string.ascii_letters))
-
-
-def on_connect(client, user_data, flags, rc):
-    print("Connected with result code " + str(rc))
-
-
-def on_message(client, userdata, msg):
-    command = msg.topic
-    comm_tab = command.split('/')
-
-    first_part = comm_tab[0]
-    sec_part = comm_tab[1]
-    if first_part == hospital_hash:
-        third_part = comm_tab[2]
-        if third_part == "pair":
-            device_id = str(msg.payload)[2:-1]
-            print("Do you want to connect with " + sec_part + " with id " + device_id + "? (Y/N)")
-            answer = input(">> ")
-            if answer == 'Y' or answer == 'y':
-                mqttc.publish(hospital_hash + "/" + sec_part + "/" + device_id, doctor_id, 0, False)
-                mqttc.subscribe(hospital_hash + "/" + sec_part + "/" + device_id)
-                mqttc.subscribe(hospital_hash + "/" + sec_part + "/" + device_id + "/unpair")
-                mqttc.unsubscribe(hospital_hash + "/" + sec_part + "/pair")
-            elif answer != 'N' or answer != 'n':
-                print("Incorrect input: " + answer)
-                return
-        else:
-            if len(comm_tab) == 4:
-                fourth_part = comm_tab[3]
-                if fourth_part == "patient" and str(msg.payload)[2:-1] == "OK":
-                    print("Patient " + str(patient_id) + " connected to device " + sec_part)
-                    db_manager.pair_device_to_patient(third_part, patient_id)
-                    mqttc.unsubscribe(msg.topic)
-                if fourth_part == "measure":
-                    measurement = str(msg.payload)[2:-1]
-                    measurement_table = measurement.split("#")
-                    measurement_data = measurement_table[0]
-                    unit_number = measurement_table[1]
-                    print("Measurement from " + sec_part + " : " + measurement_data)
-                    db_manager.add_measurement(measurement_data, third_part, patient_id, datetime.now(), unit_number)
-                if fourth_part == "unpair" and (
-                        str(msg.payload)[2:-1] == "OK" or str(msg.payload)[2:-1] == "unpairdev"):
-                    print("Disconnected from device " + sec_part + " id: " + third_part)
-                    if patient_id != "":
-                        db_manager.unpair_device_from_patient(third_part, patient_id)
-                    db_manager.unpair_device_from_doctor(third_part, doctor_id)
-                    mqttc.unsubscribe(msg.topic)
-                    mqttc.unsubscribe(hospital_hash + "/" + sec_part + "/" + third_part + "/measure")
-                    if str(msg.payload)[2:-1] == "unpairdev":
-                        mqttc.publish(msg.topic, "OK", 0, False)
-            elif len(comm_tab) == 3 and str(msg.payload)[2:-1] == "OK":
-                print("Connected to device " + sec_part + " id: " + third_part)
-                db_manager.pair_device_to_doctor(third_part, doctor_id)
-
-
-def configure():
-    mqttc.on_message = on_message
-    mqttc.on_connect = on_connect
-    mqttc.connect("broker.hivemq.com", 1883, 60)
-    mqttc.loop_forever()
+endpoint = "a196zks8gm1dr-ats.iot.us-east-1.amazonaws.com"
+doctor_hash = random.choice(string.ascii_letters) + random.randrange(0, 900)
+shadows_dictionary = {}
+private_key = ""
+certificate = ""
 
 
 def get_doctor_id():
@@ -103,16 +45,55 @@ def set_patient_id():
     print("Current patient id: " + str(patient_id))
 
 
+def delta_callback(payload, response_status, token):
+    json_data = json.loads(payload)
+    name = str(response_status).split('/')[1]
+    if 'status' in json_data['state'] and json_data['state']['status'] == 'disconnected':
+        print("Device " + name + " is disconnected")
+        shadows_dictionary.pop(name)
+
+
+def check_if_connected(payload, response_status, token):
+    json_data = json.loads(payload)
+    name = json_data['state']['reported']['welcome']
+    if json_data['state']['reported']['status'] == 'connected':
+        shadows_dictionary[name].shadowRegisterDeltaCallback(delta_callback)
+        print("Successfully connected to device " + name)
+    else:
+        print("Device " + name + " is currently unavailable")
+        shadows_dictionary.pop(name)
+
+
+def set_shadow_connection(device_name):
+    global private_key, certificate
+    json_data = json.load(open("device_certificates.json"))
+    for record in json_data:
+        if record['name'] == device_name:
+            private_key = record['private_key']
+            certificate = record['certificate']
+        else:
+            print("Did not find certificates for device")
+    shadowClient = AWSIoTMQTTShadowClient(device_name + doctor_hash)
+    shadowClient.configureEndpoint(endpoint, 8883)
+    shadowClient.configureCredentials("../iot-project/certificates/Amazon_Root_CA_1.pem", private_key,
+                                      certificate)
+    shadowClient.configureConnectDisconnectTimeout(10)
+    shadowClient.configureMQTTOperationTimeout(5)
+    shadowClient.connect()
+    deviceShadow = shadowClient.createShadowHandlerWithName(device_name, True)
+    shadows_dictionary[device_name] = deviceShadow
+    deviceShadow.shadowGet(check_if_connected, 5)
+
+
 def connect_new_device():
-    results = db_manager.get_free_devices()
+    results = db_manager.get_all_devices()
     available_devices = []
     if not results:
         print("No devices available")
         return
     for result in results:
-        if result[1] not in available_devices:
-            available_devices.append(result[1])
-    print("Available devices:")
+        available_devices.append(result[1])
+    print("Devices list:")
     i = 0
     for device in available_devices:
         print(str(i) + " - " + device)
@@ -120,25 +101,34 @@ def connect_new_device():
     print("Please select number for device")
     number = int(input(">> "))
     if 0 <= number < i:
-        device_loinc = results[number][2]
+        device_name = results[number][1]
     else:
         print("Invalid device number")
         return
-    mqttc.subscribe(hospital_hash + "/" + device_loinc + "/pair")
+    set_shadow_connection(device_name)
+
+
+def paired_callback(payload, response_status, token):
+    if response_status == "accepted":
+        print("Device paired")
 
 
 def pair_with_patient():
     if patient_id == '':
         print("Set patient id first!")
         return
-    results = db_manager.get_devices_paired_to_doctor(doctor_id)
-    connected_devices = []
-    i = 0
+    results = shadows_dictionary.keys()
     if not results:
         print("No devices connected with doctor")
         return
+    results_table = []
     for result in results:
-        connected_devices.append(str(i) + " - " + str(result[0]) + ", " + result[1] + ", " + result[2])
+        results_table.append(result)
+    connected_devices = []
+    i = 0
+    for result in results_table:
+        data = db_manager.get_device_data(result)
+        connected_devices.append(str(i) + " - " + result + " ,LOINC: " + data[1] + " ,unit:" + data[3])
         i += 1
     print("Connected devices:")
     for device in connected_devices:
@@ -146,25 +136,33 @@ def pair_with_patient():
     print("Please select number for device")
     number = int(input(">> "))
     if 0 <= number < len(connected_devices):
-        device_loinc = results[number][2]
-        device_mac = results[number][3]
+        name = results_table[number]
     else:
         print("Invalid device number")
         return
-    mqttc.publish(hospital_hash + "/" + device_loinc + "/" + device_mac + "/patient", patient_id, 0, False)
-    mqttc.subscribe(hospital_hash + "/" + device_loinc + "/" + device_mac + "/patient")
-    mqttc.subscribe(hospital_hash + "/" + device_loinc + "/" + device_mac + "/measure")
+    shadows_dictionary[name].shadowUpdate(json.dumps({'state': {'desired': {'status': 'paired', 'doctor_id': doctor_id,
+                                                                            'patient_id': patient_id}}}),
+                                          paired_callback, 5)
+
+
+def disconnect_callback(payload, response_status, token):
+    if response_status == "accepted":
+        print("Device disconnected")
 
 
 def disconnect_device():
-    results = db_manager.get_devices_paired_to_doctor(doctor_id)
-    connected_devices = []
-    i = 0
+    results = shadows_dictionary.keys()
     if not results:
         print("No devices connected with doctor")
         return
+    results_table = []
     for result in results:
-        connected_devices.append(str(i) + " - " + str(result[0]) + " " + result[1] + " " + result[2])
+        results_table.append(result)
+    connected_devices = []
+    i = 0
+    for result in results_table:
+        data = db_manager.get_device_data(result)
+        connected_devices.append(str(i) + " - " + result + " ,LOINC: " + data[1] + " ,unit:" + data[3])
         i += 1
     print("Connected devices:")
     for device in connected_devices:
@@ -172,19 +170,26 @@ def disconnect_device():
     print("Please select number for device")
     number = int(input(">> "))
     if 0 <= number < len(connected_devices):
-        device_loinc = results[number][2]
-        device_mac = results[number][3]
+        name = results_table[number]
     else:
         print("Invalid device number")
         return
-    mqttc.publish(hospital_hash + "/" + device_loinc + "/" + device_mac + "/unpair", "unpair", 0, False)
+    shadows_dictionary[name].shadowUpdate(json.dumps({'state': {'desired': {'status': 'connected', 'doctor_id': -1,
+                                                                            'patient_id': -1}}}),
+                                          disconnect_callback, 5)
 
 
 def disconnect_from_all_devices():
-    results = db_manager.get_devices_paired_to_doctor(doctor_id)
-    if results:
-        for result in results:
-            mqttc.publish(hospital_hash + "/" + result[1] + "/" + result[3] + "/unpair", "unpair", 0, False)
+    results = shadows_dictionary.keys()
+    results_table = []
+    for result in results:
+        results_table.append(result)
+    if results_table:
+        for result in results_table:
+            shadows_dictionary[result].shadowUpdate(
+                json.dumps({'state': {'desired': {'status': 'connected', 'doctor_id': -1,
+                                                  'patient_id': -1}}}),
+                disconnect_callback, 5)
 
 
 def get_patient_data():
@@ -257,16 +262,13 @@ def navigate():
         print("Please enter number from 1 to 5")
 
 
-def run_mqtt():
-    mqtt_thread = threading.Thread(target=configure)
-    mqtt_thread.start()
-
-
 def main():
-    get_doctor_id()
-    run_mqtt()
-    while True:
-        navigate()
+    try:
+        get_doctor_id()
+        while True:
+            navigate()
+    finally:
+        disconnect_from_all_devices()
 
 
 if __name__ == "__main__":

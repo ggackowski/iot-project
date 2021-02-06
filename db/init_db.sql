@@ -30,6 +30,18 @@ CREATE TABLE measurements(
     FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE SET NULL
 );
 
+CREATE TABLE device_history(
+	id SERIAL PRIMARY KEY,
+	device_id VARCHAR(40),
+	patient_id INT,
+	doctor_id INT,
+	start_date TIMESTAMP,
+	end_date TIMESTAMP,
+    FOREIGN KEY(device_id) REFERENCES devices(uuid) ON DELETE SET NULL,
+    FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE SET NULL,
+    FOREIGN KEY(doctor_id) REFERENCES doctors(id) ON DELETE SET NULL
+);
+
 CREATE TABLE loinc_data(
     id SERIAL PRIMARY KEY,
     time VARCHAR(50),
