@@ -92,6 +92,13 @@ def add_loinc_data(loinc, component, property, time, system, scale_type, method_
                 (time, system, scale_type, property, method_type, loinc, component, unit))
 
 
+@modifying_db_exception_block
+def add_device(name, loinc_number, uuid, unit, minimum_indication, maximum_indication):
+    cur.execute("INSERT INTO devices (name, loinc_number, uuid, unit, minimum indication, maximum indication) "
+                "VALUES (%s, %s, %s, %s, %s, %s)", (name, loinc_number, uuid, unit, minimum_indication,
+                                                    maximum_indication,))
+
+
 # DELETE
 @modifying_db_exception_block
 def delete_doctor(d_id):
@@ -211,7 +218,7 @@ def get_device_data(d_name):
 
 @get_from_db_exception_block
 def get_device_history(d_uuid):
-    cur.execute("SELECT device_history.* FROM device_history WHERE device_history.device_id=%s", (d_uuid, ))
+    cur.execute("SELECT device_history.* FROM device_history WHERE device_history.device_id=%s", (d_uuid,))
     cur.fetchall()
 
 

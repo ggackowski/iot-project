@@ -1,52 +1,115 @@
-import paho.mqtt.client as mqtt
 import db.db as db_manager
 import csv
+import json
+from datetime import datetime
+from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient
 
-hospital_hash = "clinic1234"
-mqttc = mqtt.Client(hospital_hash + "devices_manager")
-
-
-def on_connect(client, user_data, flags, rc):
-    print("Connected with result code " + str(rc))
-    mqttc.subscribe(hospital_hash + "/add")
-
-
-def on_message(client, userdata, msg):
-    device_data = str(msg.payload)[2:-1]
-    data_tab = device_data.split('#')
-    device_hash = data_tab[0]
-    loinc = data_tab[1]
-    name = data_tab[2]
-    device = db_manager.get_device_from_mac(device_hash)
-    if device is None:
-        db_manager.add_device(name, loinc, device_hash)
-        device_id = db_manager.get_device_from_mac(device_hash)[0]
-        print("Added new device with id " + str(device_id))
-    else:
-        device_id = device[0]
-    loinc_data = db_manager.get_loinc_data(loinc)
-    if loinc_data is None:
-        data = get_data_from_csv(loinc)
-        db_manager.add_loinc_data(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7])
-    mqttc.publish(hospital_hash + "/" + device_hash, device_id, 0, False)
+endpoint = "a196zks8gm1dr-ats.iot.us-east-1.amazonaws.com"
+shadows_dictionary = {}
+private_key = ""
+certificate = ""
 
 
 def get_data_from_csv(loinc):
-    csv_file = csv.reader(open("Loinc.csv", "r"), delimiter= ",")
+    csv_file = csv.reader(open("Loinc.csv", "r"), delimiter=",")
     for row in csv_file:
         if row[0] == loinc:
             return row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[26]
 
+
+def measurement_callback(payload, response_status, token):
+    if response_status == "accepted":
+        print("Measurement accepted")
+
+
+def on_add_measurement(payload, response_status, token):
+    json_data = json.loads(payload)
+    device_name = json_data['state']['desired']['welcome']
+    patient_id = json_data['state']['desired']['patient_id']
+    value = json_data['state']['desired']['indication']
+    uuid = db_manager.get_device_from_name(device_name)[3]
+    db_manager.add_measurement(value, uuid, patient_id, datetime.now(), )
+    shadows_dictionary[device_name].shadowUpdate(json.dumps({'state': {'reported': {'indication': value}}}),
+                                                 measurement_callback, 5)
+
+
+def delta_callback(payload, response_status, token):
+    json_data = json.loads(payload)
+    name = str(response_status).split('/')[1]
+    if 'indication' in json_data['state']:
+        shadows_dictionary[name].shadowGet(on_add_measurement, 5)
+
+
+def check_if_connected(payload, response_status, token):
+    json_data = json.loads(payload)
+    name = json_data['state']['reported']['welcome']
+    if response_status == "accepted":
+        shadows_dictionary[name].shadowRegisterDeltaCallback(delta_callback)
+        print("Device "+name+" registered in manager")
+
+
+def set_shadow_connection(device_name):
+    global private_key, certificate
+    json_data = json.load(open("device_certificates.json"))
+    for record in json_data:
+        if record['name'] == device_name:
+            private_key = record['private_key']
+            certificate = record['certificate']
+            shadowClient = AWSIoTMQTTShadowClient(device_name + "devices_manager")
+            shadowClient.configureEndpoint(endpoint, 8883)
+            shadowClient.configureCredentials("../iot-project/certificates/Amazon_Root_CA_1.pem", private_key,
+                                              certificate)
+            shadowClient.configureConnectDisconnectTimeout(10)
+            shadowClient.configureMQTTOperationTimeout(5)
+            shadowClient.connect()
+            deviceShadow = shadowClient.createShadowHandlerWithName(device_name, True)
+            shadows_dictionary[device_name] = deviceShadow
+            deviceShadow.shadowGet(check_if_connected, 5)
+
+
 def run_mqtt():
-    mqttc.on_message = on_message
-    mqttc.on_connect = on_connect
-    mqttc.connect("broker.hivemq.com", 1883, 60)
-    mqttc.loop_forever()
+    devices = db_manager.get_all_devices()
+    if not devices:
+        print("No devices in system")
+        return
+    for device in devices:
+        device_name = device[1]
+        set_shadow_connection(device_name)
+        loinc_data = db_manager.get_loinc_data(device[2])
+        if loinc_data is None:
+            data = get_data_from_csv(device[2])
+            db_manager.add_loinc_data(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7])
+
+
+def add_new_device():
+    print("Device name: ")
+    name = input(">>")
+    print("Device LOINC number:")
+    loinc = input(">>")
+    print("Device UUID:")
+    uuid = input(">>")
+    print("Device unit:")
+    unit = input(">>")
+    print("Minimum indication: ")
+    minimum = input(">>")
+    print("Maximum indication: ")
+    maximum = input(">>")
+    db_manager.add_device(name, loinc, uuid, unit, minimum, maximum)
+    print("Device added to database")
 
 
 def main():
     print("Welcome to device manager!")
+    print("To add a new device press N")
     run_mqtt()
+    while True:
+        choice = input(">>")
+        if choice == "N" or choice == "n":
+            add_new_device()
+        elif choice == '':
+            return
+        else:
+            print("To add a new device press N")
 
 
 if __name__ == "__main__":
