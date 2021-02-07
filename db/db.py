@@ -140,7 +140,7 @@ def start_device_history(device_id, patient_id, doctor_id, start_date):
 @modifying_db_exception_block
 def add_end_date_to_history(device_id, patient_id, doctor_id, end_date):
     cur.execute("UPDATE device_history SET end_date = %s WHERE device_id = %s AND "
-                "patient-id = %s AND doctor_id=%s AND end_date=NULL", (end_date, device_id, patient_id, doctor_id))
+                "patient_id = %s AND doctor_id=%s AND end_date IS NULL", (end_date, device_id, patient_id, doctor_id))
 
 
 # GET
@@ -219,7 +219,7 @@ def get_device_data(d_name):
 @get_from_db_exception_block
 def get_device_history(d_uuid):
     cur.execute("SELECT device_history.* FROM device_history WHERE device_history.device_id=%s", (d_uuid,))
-    cur.fetchall()
+    return cur.fetchall()
 
 
 if __name__ == '__main__':
