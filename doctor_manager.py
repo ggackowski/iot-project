@@ -9,8 +9,9 @@ from datetime import datetime
 doctor_id = ""
 patient_id = ""
 endpoint = "a196zks8gm1dr-ats.iot.us-east-1.amazonaws.com"
-doctor_hash = random.choice(string.ascii_letters) + random.randrange(0, 900)
+doctor_hash = random.choice(string.ascii_letters) + str(random.randrange(0, 900))
 shadows_dictionary = {}
+paired_shadows_dictionary = {}
 private_key = ""
 certificate = ""
 
@@ -48,9 +49,16 @@ def set_patient_id():
 def delta_callback(payload, response_status, token):
     json_data = json.loads(payload)
     name = str(response_status).split('/')[1]
-    if 'status' in json_data['state'] and json_data['state']['status'] == 'disconnected':
-        print("Device " + name + " is disconnected")
+    if 'status' in json_data['state'] and (json_data['state']['status'] == 'disconnected'):
+        print("Device " + name + " is unavailable")
         shadows_dictionary.pop(name)
+    if 'status' in json_data['state'] and json_data['state']['status'] == 'paired':
+        if 'doctor_id' in json_data['state'] and json_data['state']['doctor_id'] == doctor_id:
+            paired_shadows_dictionary[name] = shadows_dictionary[name]
+            shadows_dictionary.pop(name)
+        else:
+            print("Device " + name + " is unavailable")
+            shadows_dictionary.pop(name)
 
 
 def check_if_connected(payload, response_status, token):
@@ -71,18 +79,16 @@ def set_shadow_connection(device_name):
         if record['name'] == device_name:
             private_key = record['private_key']
             certificate = record['certificate']
-        else:
-            print("Did not find certificates for device")
-    shadowClient = AWSIoTMQTTShadowClient(device_name + doctor_hash)
-    shadowClient.configureEndpoint(endpoint, 8883)
-    shadowClient.configureCredentials("../iot-project/certificates/Amazon_Root_CA_1.pem", private_key,
-                                      certificate)
-    shadowClient.configureConnectDisconnectTimeout(10)
-    shadowClient.configureMQTTOperationTimeout(5)
-    shadowClient.connect()
-    deviceShadow = shadowClient.createShadowHandlerWithName(device_name, True)
-    shadows_dictionary[device_name] = deviceShadow
-    deviceShadow.shadowGet(check_if_connected, 5)
+            shadowClient = AWSIoTMQTTShadowClient(device_name + doctor_hash)
+            shadowClient.configureEndpoint(endpoint, 8883)
+            shadowClient.configureCredentials("../iot-project/certificates/Amazon_Root_CA_1.pem", private_key,
+                                              certificate)
+            shadowClient.configureConnectDisconnectTimeout(10)
+            shadowClient.configureMQTTOperationTimeout(5)
+            shadowClient.connect()
+            deviceShadow = shadowClient.createShadowHandlerWithName(device_name, True)
+            shadows_dictionary[device_name] = deviceShadow
+            deviceShadow.shadowGet(check_if_connected, 5)
 
 
 def connect_new_device():
@@ -121,14 +127,12 @@ def pair_with_patient():
     if not results:
         print("No devices connected with doctor")
         return
-    results_table = []
-    for result in results:
-        results_table.append(result)
+    results_table = list(results)
     connected_devices = []
     i = 0
     for result in results_table:
         data = db_manager.get_device_data(result)
-        connected_devices.append(str(i) + " - " + result + " ,LOINC: " + data[1] + " ,unit:" + data[3])
+        connected_devices.append(str(i) + " - " + result + " ,LOINC: " + data[2] + " ,unit:" + data[4])
         i += 1
     print("Connected devices:")
     for device in connected_devices:
@@ -140,29 +144,32 @@ def pair_with_patient():
     else:
         print("Invalid device number")
         return
-    shadows_dictionary[name].shadowUpdate(json.dumps({'state': {'desired': {'status': 'paired', 'doctor_id': doctor_id,
-                                                                            'patient_id': patient_id}}}),
+    shadows_dictionary[name].shadowUpdate(json.dumps({"state": {"desired": {"status": "paired", "doctor_id": doctor_id,
+                                                                            "patient_id": patient_id}}}),
                                           paired_callback, 5)
+    device_uuid = db_manager.get_device_from_name(name)[3]
+    db_manager.start_device_history(device_uuid, patient_id, doctor_id, datetime.now())
 
 
 def disconnect_callback(payload, response_status, token):
     if response_status == "accepted":
-        print("Device disconnected")
+        print("Device unpaired")
 
 
-def disconnect_device():
-    results = shadows_dictionary.keys()
+def unpair_device():
+    if patient_id == '':
+        print("Set patient id first!")
+        return
+    results = paired_shadows_dictionary.keys()
     if not results:
         print("No devices connected with doctor")
         return
-    results_table = []
-    for result in results:
-        results_table.append(result)
+    results_table = list(results)
     connected_devices = []
     i = 0
     for result in results_table:
         data = db_manager.get_device_data(result)
-        connected_devices.append(str(i) + " - " + result + " ,LOINC: " + data[1] + " ,unit:" + data[3])
+        connected_devices.append(str(i) + " - " + result + " ,LOINC: " + data[2] + " ,unit:" + data[4])
         i += 1
     print("Connected devices:")
     for device in connected_devices:
@@ -174,16 +181,19 @@ def disconnect_device():
     else:
         print("Invalid device number")
         return
-    shadows_dictionary[name].shadowUpdate(json.dumps({'state': {'desired': {'status': 'connected', 'doctor_id': -1,
-                                                                            'patient_id': -1}}}),
-                                          disconnect_callback, 5)
+    paired_shadows_dictionary[name].shadowUpdate(
+        json.dumps({'state': {'desired': {'status': 'connected', 'doctor_id': -1,
+                                          'patient_id': -1}}}),
+        disconnect_callback, 5)
+    device_uuid = db_manager.get_device_from_name(name)[3]
+    db_manager.add_end_date_to_history(device_uuid, patient_id, doctor_id, datetime.now())
+    shadows_dictionary[name] = paired_shadows_dictionary[name]
+    paired_shadows_dictionary.pop(name)
 
 
 def disconnect_from_all_devices():
     results = shadows_dictionary.keys()
-    results_table = []
-    for result in results:
-        results_table.append(result)
+    results_table = list(results)
     if results_table:
         for result in results_table:
             shadows_dictionary[result].shadowUpdate(
@@ -201,8 +211,7 @@ def get_patient_data():
         print("No data for patient")
         return
     for result in results:
-        data = db_manager.get_loinc_data(result[4])
-        unit = data[8].split(";")[result[6]]
+        unit = result[6]
         print("Data for " + result[0] + " " + result[1] + ": " + str(result[2]) + " " + unit + " from " + result[3])
         print("Date and time of measurement: " + result[5].strftime("%d/%m/%Y %H:%M:%S"))
 
@@ -215,7 +224,7 @@ def get_device_description():
         print("No devices in database")
         return
     for result in results:
-        devices.append(str(i) + " - " + str(result[0]) + " " + result[1] + " " + result[2])
+        devices.append(str(i) + " - " + result[1] + " ,LOINC: " + result[2] + " ,unit:" + result[4])
         i += 1
     print("Available devices:")
     for device in devices:
@@ -228,19 +237,52 @@ def get_device_description():
         print("Invalid device number")
         return
     data = db_manager.get_loinc_data(device_loinc)
+    attributes = results[number]
     if not data:
         print("No data for selected device")
         return
+    print("Device attributes for device " + attributes[1] + "\n UUID: " + attributes[3] + "\n Unit: " + attributes[4]
+          + "\n Minimum indication: " + str(attributes[5]) + " Maximum indication: " + str(attributes[6]))
     print("Device parameters for LOINC " + data[6] + ": \n Component: " + data[7] + "\n Kind of property: " + data[4] +
           "\n Time aspect: " + data[1] + "\n System: " + data[2] + "\n Type of scale: " + data[
               3] + "\n Type of method: " +
-          data[5] + "\n Unit: " + data[8])
+          data[5])
+
+
+def get_device_history():
+    results = db_manager.get_all_devices()
+    devices = []
+    i = 0
+    if not results:
+        print("No devices in database")
+        return
+    for result in results:
+        devices.append(str(i) + " - " + result[1] + " ,LOINC: " + result[2] + " ,unit:" + result[4])
+        i += 1
+    print("Available devices:")
+    for device in devices:
+        print(device)
+    print("Please select number for device")
+    number = int(input(">> "))
+    if 0 <= number < len(devices):
+        uuid = results[number][3]
+    else:
+        print("Invalid device number")
+        return
+    history = db_manager.get_device_history(uuid)
+    if not history:
+        print("No history for device")
+        return
+    for result in history:
+        print("\n Patient id: " + str(result[2]) + ", Doctor id: " + str(result[3]) + " ,Start date: "
+              + result[4].strftime("%d/%m/%Y %H:%M:%S") +
+              " ,End date: " + result[5].strftime("%d/%m/%Y %H:%M:%S"))
 
 
 def navigate():
     print("What do you want to do? (Enter the number for the selected action) \n 1 - set patient id "
-          "\n 2 - connect new device \n 3 - pair device with patient \n 4 - disconnect device \n"
-          " 5 - disconnect from all devices \n 6 - get current patient data \n 7 - get device description")
+          "\n 2 - connect new device \n 3 - pair device with patient \n 4 - unpair device \n"
+          " 5 - get device history \n 6 - get current patient data \n 7 - get device description")
     choice = input(">>")
     if choice == "1":
         set_patient_id()
@@ -249,9 +291,9 @@ def navigate():
     elif choice == "3":
         pair_with_patient()
     elif choice == "4":
-        disconnect_device()
+        unpair_device()
     elif choice == "5":
-        disconnect_from_all_devices()
+        get_device_history()
     elif choice == "6":
         get_patient_data()
     elif choice == "7":
@@ -263,12 +305,9 @@ def navigate():
 
 
 def main():
-    try:
-        get_doctor_id()
-        while True:
-            navigate()
-    finally:
-        disconnect_from_all_devices()
+    get_doctor_id()
+    while True:
+        navigate()
 
 
 if __name__ == "__main__":
