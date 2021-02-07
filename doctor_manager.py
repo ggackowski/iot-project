@@ -128,7 +128,7 @@ def pair_with_patient():
     i = 0
     for result in results_table:
         data = db_manager.get_device_data(result)
-        connected_devices.append(str(i) + " - " + result + " ,LOINC: " + data[1] + " ,unit:" + data[3])
+        connected_devices.append(str(i) + " - " + result[0] + " ,LOINC: " + data[1] + " ,unit:" + data[3])
         i += 1
     print("Connected devices:")
     for device in connected_devices:
@@ -142,15 +142,21 @@ def pair_with_patient():
         return
     shadows_dictionary[name].shadowUpdate(json.dumps({'state': {'desired': {'status': 'paired', 'doctor_id': doctor_id,
                                                                             'patient_id': patient_id}}}),
+
                                           paired_callback, 5)
+    device_uuid = db_manager.get_device_data(name)[2]
+    db_manager.start_device_history(device_uuid, patient_id, doctor_id, datetime.now())
 
 
 def disconnect_callback(payload, response_status, token):
     if response_status == "accepted":
-        print("Device disconnected")
+        print("Device unpaired")
 
 
-def disconnect_device():
+def unpair_device():
+    if patient_id == '':
+        print("Set patient id first!")
+        return
     results = shadows_dictionary.keys()
     if not results:
         print("No devices connected with doctor")
@@ -162,7 +168,7 @@ def disconnect_device():
     i = 0
     for result in results_table:
         data = db_manager.get_device_data(result)
-        connected_devices.append(str(i) + " - " + result + " ,LOINC: " + data[1] + " ,unit:" + data[3])
+        connected_devices.append(str(i) + " - " + result[0] + " ,LOINC: " + data[1] + " ,unit:" + data[3])
         i += 1
     print("Connected devices:")
     for device in connected_devices:
@@ -177,6 +183,8 @@ def disconnect_device():
     shadows_dictionary[name].shadowUpdate(json.dumps({'state': {'desired': {'status': 'connected', 'doctor_id': -1,
                                                                             'patient_id': -1}}}),
                                           disconnect_callback, 5)
+    device_uuid = db_manager.get_device_data(name)[2]
+    db_manager.add_end_date_to_history(device_uuid, patient_id, doctor_id, datetime.now())
 
 
 def disconnect_from_all_devices():
@@ -201,8 +209,8 @@ def get_patient_data():
         print("No data for patient")
         return
     for result in results:
-        data = db_manager.get_loinc_data(result[4])
-        unit = data[8].split(";")[result[6]]
+        data = db_manager.get_device_from_uuid(result[1])
+        unit = data[3]
         print("Data for " + result[0] + " " + result[1] + ": " + str(result[2]) + " " + unit + " from " + result[3])
         print("Date and time of measurement: " + result[5].strftime("%d/%m/%Y %H:%M:%S"))
 
@@ -215,7 +223,7 @@ def get_device_description():
         print("No devices in database")
         return
     for result in results:
-        devices.append(str(i) + " - " + str(result[0]) + " " + result[1] + " " + result[2])
+        devices.append(str(i) + " - " + result[0] + " ,LOINC: " + result[1] + " ,unit:" + result[3])
         i += 1
     print("Available devices:")
     for device in devices:
@@ -223,24 +231,52 @@ def get_device_description():
     print("Please select number for device")
     number = int(input(">> "))
     if 0 <= number < len(devices):
-        device_loinc = results[number][2]
+        device_loinc = results[number][1]
     else:
         print("Invalid device number")
         return
     data = db_manager.get_loinc_data(device_loinc)
+    attributes = results[number]
     if not data:
         print("No data for selected device")
         return
+    print("Device attributes for device " + attributes[0] + "\n UUID: " + attributes[2] + "\n Unit: " + attributes[3]
+          + "\n Minimum indication: " + attributes[4] + " Maximum indication: "+ attributes[5])
     print("Device parameters for LOINC " + data[6] + ": \n Component: " + data[7] + "\n Kind of property: " + data[4] +
           "\n Time aspect: " + data[1] + "\n System: " + data[2] + "\n Type of scale: " + data[
               3] + "\n Type of method: " +
-          data[5] + "\n Unit: " + data[8])
+          data[5])
+
+
+def get_device_history():
+    results = db_manager.get_all_devices()
+    devices = []
+    i = 0
+    if not results:
+        print("No devices in database")
+        return
+    for result in results:
+        devices.append(str(i) + " - " + result[0] + " ,LOINC: " + result[1] + " ,unit:" + result[3])
+        i += 1
+    print("Available devices:")
+    for device in devices:
+        print(device)
+    print("Please select number for device")
+    number = int(input(">> "))
+    if 0 <= number < len(devices):
+        uuid = results[number][2]
+    else:
+        print("Invalid device number")
+        return
+    history = db_manager.get_device_history(uuid)
+    for result in history:
+        print("\n Patient id: "+result[1]+", Doctor id: "+result[2]+" ,Start date: "+result[3]+" ,End date: "+result[4])
 
 
 def navigate():
     print("What do you want to do? (Enter the number for the selected action) \n 1 - set patient id "
-          "\n 2 - connect new device \n 3 - pair device with patient \n 4 - disconnect device \n"
-          " 5 - disconnect from all devices \n 6 - get current patient data \n 7 - get device description")
+          "\n 2 - connect new device \n 3 - pair device with patient \n 4 - unpair device \n"
+          " 5 - get device history \n 6 - get current patient data \n 7 - get device description")
     choice = input(">>")
     if choice == "1":
         set_patient_id()
@@ -249,9 +285,9 @@ def navigate():
     elif choice == "3":
         pair_with_patient()
     elif choice == "4":
-        disconnect_device()
+        unpair_device()
     elif choice == "5":
-        disconnect_from_all_devices()
+        get_device_history()
     elif choice == "6":
         get_patient_data()
     elif choice == "7":
@@ -263,12 +299,9 @@ def navigate():
 
 
 def main():
-    try:
-        get_doctor_id()
-        while True:
-            navigate()
-    finally:
-        disconnect_from_all_devices()
+    get_doctor_id()
+    while True:
+        navigate()
 
 
 if __name__ == "__main__":
