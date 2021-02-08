@@ -33,11 +33,33 @@ def on_add_measurement(payload, response_status, token):
                                                  measurement_callback, 5)
 
 
+def disconnected_callback(payload, response_status, token):
+    if response_status == 'accepted':
+        print("Device disconnected")
+
+
+def on_disconnect(payload, response_status, token):
+    json_data = json.loads(payload)
+    prev_state = json_data['state']['reported']['welcome']
+    name = json_data['state']['reported']['welcome']
+    if prev_state == 'paired':
+        patient_id = json_data['state']['reported']['patient_id']
+        doctor_id = json_data['state']['reported']['doctor_id']
+        uuid = db_manager.get_device_from_name(name)[3]
+        db_manager.add_end_date_to_history(uuid, patient_id, doctor_id, datetime.now())
+    print("Device " + name + " is unavailable")
+    shadows_dictionary[name].shadowUpdate(json.dumps({'state': {'reported': {'state': 'disconnected', 'doctor_id': -1,
+                                                                             'patient_id': -1, 'indication': 0}}}),
+                                          disconnected_callback, 5)
+
+
 def delta_callback(payload, response_status, token):
     json_data = json.loads(payload)
     name = str(response_status).split('/')[1]
     if 'indication' in json_data['state']:
         shadows_dictionary[name].shadowGet(on_add_measurement, 5)
+    if 'status' in json_data['state'] and (json_data['state']['status'] == 'disconnected'):
+        shadows_dictionary[name].shadowGet(on_disconnect, 5)
 
 
 def check_if_connected(payload, response_status, token):
@@ -45,7 +67,7 @@ def check_if_connected(payload, response_status, token):
     name = json_data['state']['reported']['welcome']
     if response_status == "accepted":
         shadows_dictionary[name].shadowRegisterDeltaCallback(delta_callback)
-        print("Device "+name+" registered in manager")
+        print("Device " + name + " registered in manager")
 
 
 def set_shadow_connection(device_name):

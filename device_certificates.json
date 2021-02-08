@@ -1,0 +1,27 @@
+[
+  {
+  "name": "glucometer_17432f61",
+  "private_key": "../iot-project/certificates/glucometer_2339_0/0ee175d973-private.pem.key",
+    "certificate": "../iot-project/certificates/glucometer_2339_0/0ee175d973-certificate.pem.crt"
+  },
+  {
+    "name": "Oxygen_fd70ed88",
+    "private_key": "../iot-project/certificates/oxygen_11556_8/89a8a1565c-private.pem.key",
+    "certificate": "../iot-project/certificates/oxygen_11556_8/89a8a1565c-certificate.pem.crt"
+  },
+  {
+    "name": "body_weight_scales_lb_8e2eeb34",
+    "private_key": "../iot-project/certificates/weight_lb/671d240ae6-private.pem.key",
+    "certificate": "../iot-project/certificates/weight_lb/671d240ae6-certificate.pem.crt"
+  },
+  {
+    "name": "glucometer_4fe3ba2a",
+    "private_key": "../iot-project/certificates/gluco15074-8/d0b410cba6-private.pem.key",
+    "certificate": "../iot-project/certificates/gluco15074-8/d0b410cba6-certificate.pem.crt"
+  },
+  {
+    "name": "body_weight_scales_kg_d2f0df80",
+    "private_key": "../iot-project/certificates/weight_kg/2dc5264e13-private.pem.key",
+    "certificate": "../iot-project/certificates/weight_kg/2dc5264e13-certificate.pem.crt"
+  }
+]

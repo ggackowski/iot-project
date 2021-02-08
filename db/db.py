@@ -1,6 +1,7 @@
 import psycopg2
 import psycopg2.extras
 import os
+import json
 
 # using environment variables to get db host and password
 DB_HOST = os.environ.get("iot_db_host")
@@ -222,7 +223,15 @@ def get_device_history(d_uuid):
     return cur.fetchall()
 
 
+def init_devices_table():
+    devices_data = json.load(open("devices_description.json"))
+    for record in devices_data:
+        add_device(record['name'], record['loinc_number'], record['uuid'], record['unit'], record['minimum_indication'],
+                   record['maximum_indication'])
+
+
 if __name__ == '__main__':
     delete_db()
     init_db()
+    init_devices_table()
     disconnect()

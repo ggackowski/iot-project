@@ -1,0 +1,42 @@
+[
+  {
+  "name": "glucometer_17432f61",
+  "loinc_number": "2339-0",
+    "uuid": "17432f61-21c1-45c1-9759-07318bd07e4a",
+    "unit": "mg/dL",
+    "minimum_indication": 20,
+    "maximum_indication": 600
+  },
+  {
+    "name": "Oxygen_fd70ed88",
+    "loinc_number": "11556-8",
+    "uuid": "fd70ed88-eff9-4b03-8664-7cc378c0c9b4",
+    "unit": "mmHg",
+    "minimum_indication": 60,
+    "maximum_indication": 100
+  },
+  {
+    "name": "body_weight_scales_lb_8e2eeb34",
+    "loinc_number": "29463-7",
+    "uuid": "8e2eeb34-6981-11eb-9439-0242ac130002",
+    "unit": "lb",
+    "minimum_indication": 2,
+    "maximum_indication": 440
+  },
+  {
+    "name": "glucometer_4fe3ba2a",
+    "loinc_number": "15074-8",
+    "uuid": "4fe3ba2a-6982-11eb-9439-0242ac130002",
+    "unit": "mmol/L",
+    "minimum_indication": 1,
+    "maximum_indication": 33
+  },
+  {
+    "name": "body_weight_scales_kg_d2f0df80",
+    "loinc_number": "29463-7",
+    "uuid": "d2f0df80-697b-11eb-9439-0242ac130002",
+    "unit": "kg",
+    "minimum_indication": 1,
+    "maximum_indication": 200
+  }
+]
