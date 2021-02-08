@@ -6,7 +6,7 @@ import random
 
 class Device:
 
-    connectReqJson = '{"state": {"desired": {"status": "connected"}, "reported": {"status": "connected"}}}'
+    connectReqJson = '{"state": {"desired": {"state": "connected"}, "reported": {"state": "connected"}}}'
     test = '{"halo": 1}'
 
     def __init__(self, private_key, certificate, client_id, endpoint, device_name, parameters):
@@ -16,13 +16,28 @@ class Device:
         self.configure_device_shadow(device_name)
         self.parameters = parameters
         self.deviceShadow.shadowUpdate(self.connectReqJson, self.on_shadow_update, 5)
-        self.deviceShadow.shadowRegisterDeltaCallback()
-        self.execute_user_input(self.on_delta_update)
+        self.deviceShadow.shadowRegisterDeltaCallback(self.on_delta_update)
+        self.execute_user_input()
     
     def on_delta_update(self, payload, responseS_status, token):
-        print(payload)
+        print('delta update')
         data = json.loads(payload)
+        print(data)
+        data = data['state']
+        if 'state' in data and data['state'] == 'paired' and 'doctor_id' in data and 'patient_id' in data:
+            pairedJson = '{"state": {"reported": {"state": "paired", "patient_id": ' + str(data['patient_id']) + ', "doctor_id": ' + str(data['doctor_id']) + '}}}'
+            print('pair')
+            print(pairedJson)
+            self.deviceShadow.shadowUpdate(pairedJson, self.on_shadow_update, 5)
 
+        elif 'patient_id' in data:
+            print('patient id')
+            patientIdJson = '{"state": {"reported": {"patient_id": ' + str(data['patient_id']) + '}}}'
+            self.deviceShadow.shadowUpdate(patientIdJson, self.on_shadow_update, 5)
+
+        elif 'state' in data and data['state'] == 'connected': #and data['doctor_id'] == -1 and data['patient_id'] == -1:
+            connectJson = '{"state": {"reported": {"state": "connected", "patient_id": -1, "doctor_id": -1}, "desired": {"state": "connected", "patient_id": -1, "doctor_id": -1}}}'
+            self.deviceShadow.shadowUpdate(connectJson, self.on_shadow_update, 5)
     
     def configure_shadow_client(self, endpoint, private_key, certificate):
         self.shadowClient.configureEndpoint(endpoint, 8883)
@@ -36,10 +51,8 @@ class Device:
         self.deviceShadow.shadowGet(self.on_shadow_get, 5)
 
     def on_shadow_update(self, payload, response_status, token):
-        print('update')
-        print(payload)
-        print(type(payload))
-        print(json.loads(payload))
+        pass
+
     
     @staticmethod
     def on_shadow_get(payload, response_status, token):
@@ -54,15 +67,15 @@ class Device:
         self.deviceShadow.shadowUpdate(measureJson, self.on_shadow_update, 5)
 
     def unpair(self):
-        unpairJson = ' {"state": {"desired": {"state": "disconnected"}},"reported": {"status": "disconnected"}}'
+        unpairJson = ' {"state": {"desired": {"state": "disconnected"}}}'
         self.deviceShadow.shadowUpdate(unpairJson, self.on_shadow_update, 5)
         
 
     def execute_user_input(self):
         while True:
             text = input("\n>> ")
-            if text == "pair":
-                pair()
+           # if text == "pair":
+           #     pair()
             if text == "measure":
                 self.measure()
             if text == "unpair":
