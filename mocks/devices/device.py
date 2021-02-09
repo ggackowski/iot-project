@@ -69,6 +69,7 @@ class Device:
     def unpair(self):
         unpairJson = ' {"state": {"desired": {"status": "disconnected"}}}'
         self.deviceShadow.shadowUpdate(unpairJson, self.on_shadow_update, 5)
+        exit(0)
 
     def execute_user_input(self):
         while True:
