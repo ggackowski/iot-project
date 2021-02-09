@@ -8,10 +8,10 @@ from device import Device
 DEVICE_PARAMETERS = {
     "loinc_num": "29463-7",
     "loinc_long_common_name": "Body weight",
-    "hash": "nfjdhfkjd",
-    "minimal_measurement": 1,
-    "maximal_measurement": 240,
-    "unit": 0
+    "hash": "8e2eeb34-6981-11eb-9439-0242ac130002",
+    "minimal_measurement": 2,
+    "maximal_measurement": 440,
+    "unit": "lb"
 }
 
 if __name__ == "__main__":

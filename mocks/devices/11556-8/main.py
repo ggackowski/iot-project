@@ -8,10 +8,10 @@ from device import Device
 DEVICE_PARAMETERS = {
     "loinc_num": "11556-8",
     "loinc_long_common_name": "Oxygen [Partial pressure] in Blood",
-    "hash": "adjfkeor",
-    "minimal_measurement": 20,
-    "maximal_measurement": 140,
-    "unit": 0
+    "hash": "fd70ed88-eff9-4b03-8664-7cc378c0c9b4",
+    "minimal_measurement": 60,
+    "maximal_measurement": 100,
+    "unit": "mmHg"
 }
 
 if __name__ == "__main__":

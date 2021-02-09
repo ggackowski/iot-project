@@ -8,10 +8,10 @@ from device import Device
 DEVICE_PARAMETERS = {
     "loinc_num": "15074-8",
     "loinc_long_common_name": "Glucose [Moles/volume] in Blood",
-    "hash": "kmvkjfkf",
-    "minimal_measurement": 80,
-    "maximal_measurement": 100,
-    "unit": 0
+    "hash": "4fe3ba2a-6982-11eb-9439-0242ac130002",
+    "minimal_measurement": 1,
+    "maximal_measurement": 33,
+    "unit": "mmol/L"
 }
 
 if __name__ == "__main__":

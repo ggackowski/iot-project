@@ -1,6 +1,3 @@
-import mqtt_driver
-import time
-import random
 import sys
 sys.path.insert(0, '../')
 from device import Device
@@ -8,10 +5,10 @@ from device import Device
 DEVICE_PARAMETERS = {
     "loinc_num": "2339-0",
     "loinc_long_common_name": "Glucose [Mass/volume] in Blood",
-    "hash": "dnbjgktr",
-    "minimal_measurement": 80,
-    "maximal_measurement": 150,
-    "unit": 0
+    "hash": "17432f61-21c1-45c1-9759-07318bd07e4a",
+    "minimal_measurement": 20,
+    "maximal_measurement": 600,
+    "unit": "mg/dL"
 }
 
 if __name__ == "__main__":
