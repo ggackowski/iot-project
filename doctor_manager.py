@@ -67,6 +67,8 @@ def delta_callback(payload, response_status, token):
         else:
             print("Device " + name + " is unavailable")
             shadows_dictionary.pop(name)
+        shadow_clients[name].disconnect()
+        shadow_clients.pop(name)
 
 
 def check_if_connected(payload, response_status, token):

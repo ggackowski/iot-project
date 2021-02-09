@@ -26,6 +26,8 @@ def on_add_measurement(payload, response_status, token):
     json_data = json.loads(payload)
     device_name = json_data['state']['desired']['welcome']
     patient_id = json_data['state']['desired']['patient_id']
+    if patient_id == -1:
+        return
     value = json_data['state']['desired']['indication']
     uuid = db_manager.get_device_from_name(device_name)[3]
     db_manager.add_measurement(value, uuid, patient_id, datetime.now(), )
