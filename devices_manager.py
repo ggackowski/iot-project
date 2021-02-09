@@ -40,7 +40,7 @@ def disconnected_callback(payload, response_status, token):
 
 def on_disconnect(payload, response_status, token):
     json_data = json.loads(payload)
-    prev_state = json_data['state']['reported']['welcome']
+    prev_state = json_data['state']['reported']['status']
     name = json_data['state']['reported']['welcome']
     if prev_state == 'paired':
         patient_id = json_data['state']['reported']['patient_id']
@@ -48,7 +48,9 @@ def on_disconnect(payload, response_status, token):
         uuid = db_manager.get_device_from_name(name)[3]
         db_manager.add_end_date_to_history(uuid, patient_id, doctor_id, datetime.now())
     print("Device " + name + " is unavailable")
-    shadows_dictionary[name].shadowUpdate(json.dumps({'state': {'reported': {'status': 'disconnected', 'doctor_id': -1,
+    shadows_dictionary[name].shadowUpdate(json.dumps({'state':
+                                                    {'desired': {'doctor_id': -1, 'patient_id': -1, 'indication': 0},
+                                                      'reported': {'status': 'disconnected', 'doctor_id': -1,
                                                                              'patient_id': -1, 'indication': 0}}}),
                                           disconnected_callback, 5)
 

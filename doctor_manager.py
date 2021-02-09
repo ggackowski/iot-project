@@ -12,6 +12,7 @@ endpoint = "a196zks8gm1dr-ats.iot.us-east-1.amazonaws.com"
 doctor_hash = random.choice(string.ascii_letters) + str(random.randrange(0, 900))
 shadows_dictionary = {}
 paired_shadows_dictionary = {}
+shadow_clients = {}
 private_key = ""
 certificate = ""
 
@@ -51,7 +52,14 @@ def delta_callback(payload, response_status, token):
     name = str(response_status).split('/')[1]
     if 'status' in json_data['state'] and (json_data['state']['status'] == 'disconnected'):
         print("Device " + name + " is unavailable")
-        shadows_dictionary.pop(name)
+        if name in shadows_dictionary:
+            shadows_dictionary[name].shadowUnregisterDeltaCallback()
+            shadows_dictionary.pop(name)
+        elif name in paired_shadows_dictionary:
+            paired_shadows_dictionary[name].shadowUnregisterDeltaCallback()
+            paired_shadows_dictionary.pop(name)
+        shadow_clients[name].disconnect()
+        shadow_clients.pop(name)
     if 'status' in json_data['state'] and json_data['state']['status'] == 'paired':
         if 'doctor_id' in json_data['state'] and json_data['state']['doctor_id'] == doctor_id:
             paired_shadows_dictionary[name] = shadows_dictionary[name]
@@ -70,6 +78,8 @@ def check_if_connected(payload, response_status, token):
     else:
         print("Device " + name + " is currently unavailable")
         shadows_dictionary.pop(name)
+        shadow_clients[name].disconnect()
+        shadow_clients.pop(name)
 
 
 def set_shadow_connection(device_name):
@@ -86,6 +96,7 @@ def set_shadow_connection(device_name):
             shadowClient.configureConnectDisconnectTimeout(10)
             shadowClient.configureMQTTOperationTimeout(5)
             shadowClient.connect()
+            shadow_clients[device_name] = shadowClient
             deviceShadow = shadowClient.createShadowHandlerWithName(device_name, True)
             shadows_dictionary[device_name] = deviceShadow
             deviceShadow.shadowGet(check_if_connected, 5)
