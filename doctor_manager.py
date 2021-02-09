@@ -17,6 +17,35 @@ private_key = ""
 certificate = ""
 
 
+def set_paired_connection(device_name):
+    global private_key, certificate
+    json_data = json.load(open("device_certificates.json"))
+    for record in json_data:
+        if record['name'] == device_name:
+            private_key = record['private_key']
+            certificate = record['certificate']
+            shadowClient = AWSIoTMQTTShadowClient(device_name + doctor_hash)
+            shadowClient.configureEndpoint(endpoint, 8883)
+            shadowClient.configureCredentials("../iot-project/certificates/Amazon_Root_CA_1.pem", private_key,
+                                              certificate)
+            shadowClient.configureConnectDisconnectTimeout(10)
+            shadowClient.configureMQTTOperationTimeout(5)
+            shadowClient.connect()
+            shadow_clients[device_name] = shadowClient
+            deviceShadow = shadowClient.createShadowHandlerWithName(device_name, True)
+            paired_shadows_dictionary[device_name] = deviceShadow
+            paired_shadows_dictionary[device_name].shadowRegisterDeltaCallback(delta_callback)
+            print("Successfully paired with device " + device_name)
+
+
+def set_paired_devices():
+    results = db_manager.get_devices_paired_with_doctor(doctor_id)
+    if not results:
+        return
+    for result in results:
+        set_paired_connection(result[0])
+
+
 def get_doctor_id():
     global doctor_id
     print("Welcome to Smart Medical Devices Management System!")
@@ -30,6 +59,7 @@ def get_doctor_id():
         doctor_id = db_manager.get_doctor_id(doctor_name, doctor_surname)[0]
     else:
         doctor_id = doctor[0]
+    set_paired_devices()
 
 
 def set_patient_id():
@@ -87,6 +117,8 @@ def check_if_connected(payload, response_status, token):
 def set_shadow_connection(device_name):
     global private_key, certificate
     json_data = json.load(open("device_certificates.json"))
+    if device_name in shadows_dictionary or (device_name in paired_shadows_dictionary):
+        return
     for record in json_data:
         if record['name'] == device_name:
             private_key = record['private_key']

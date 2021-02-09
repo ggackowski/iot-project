@@ -195,10 +195,10 @@ def get_patient_id(name, surname):
 
 @get_from_db_exception_block
 def get_patient_measurements(p_id):
-    cur.execute("SELECT patients.name, patients.surname, measurements.val, devices.name, devices.loinc_num,"
+    cur.execute("SELECT patients.name, patients.surname, measurements.val, devices.name, devices.loinc_number,"
                 " measurements.date, devices.unit FROM patients "
                 "INNER JOIN measurements ON measurements.patient_id = patients.id "
-                "INNER JOIN devices ON measurements.device_id = devices.mac "
+                "INNER JOIN devices ON measurements.device_id = devices.uuid "
                 "WHERE patients.id = %s", (p_id,))
     return cur.fetchall()
 
@@ -220,6 +220,13 @@ def get_device_data(d_name):
 @get_from_db_exception_block
 def get_device_history(d_uuid):
     cur.execute("SELECT device_history.* FROM device_history WHERE device_history.device_id=%s", (d_uuid,))
+    return cur.fetchall()
+
+
+@get_from_db_exception_block
+def get_devices_paired_with_doctor(d_id):
+    cur.execute("SELECT devices.name FROM devices JOIN device_history ON devices.uuid = device_history.device_id WHERE"
+                " device_history.end_date IS NULL AND device_history.doctor_id = %s", (d_id, ))
     return cur.fetchall()
 
 
